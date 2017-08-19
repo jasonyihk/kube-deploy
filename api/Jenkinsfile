@@ -1,0 +1,71 @@
+#!/usr/bin/env groovy
+
+@Library('jenkins-pipeline-library') _
+import lib.jenkins.pipeline
+
+properties([
+    parameters([
+        string(defaultValue: 'dev', description: 'The target env/naemspace to deploy.', name: 'ENV_KUBE_NAMESPACE'),
+        string(defaultValue: '', description: 'The docker image tag to be used.', name: 'ENV_IMAGE_TAG')
+    ])
+])
+
+node {
+   stage('Clean Up') {
+     cleanUp()
+   }
+
+   stage('Checkout Code') {
+     checkoutSource()
+   }
+
+   stage('Checkout Code') {
+     checkoutSource()
+   }
+
+   stage('Build Image') {
+     buildImage(imageName, dockerfileName: dockerfileName,
+             sshPrivateKeyFileName: "${env.BITBUCKET_PRIVATE_KEY_FILE_NAME}")
+   }
+
+   stage('Test') {
+     def dockerfile = "Dockerfile.monoworker.test"
+     testImage(imageName, dockerfileName: dockerfile,
+             sshPrivateKeyFileName: "${env.BITBUCKET_PRIVATE_KEY_FILE_NAME}") {imageTag ->
+       sh("make imageTag=${imageTag} dockerfile.monoworker.test")
+     }
+   }
+
+   stage('Push Image') {
+     pushImage(imageName)
+   }
+
+   stage('Tag Image') {
+     moveImage(imageName, getBranchImageTag())
+     moveImage(imageName, getBranchCommitImageTag())
+     moveImage(imageName, getBranchCommitBuildIdImageTag())
+   }
+
+   if ("${env.BRANCH_NAME}" == "master") {
+     stage('Deploy') {
+      if (currentBuild.result == 'FAILURE') {
+        return;
+      }
+
+      try {
+        def imageVersion = gitTaggedTag ?: gitBuildTag
+        build job: "deploy", parameters: [
+          [$class: 'StringParameterValue', name: 'K8S_NAMESPACE', value: "dev"],
+          [$class: 'StringParameterValue', name: 'IMAGE_TAG', value: imageVersion.split(":")[1]]
+        ]
+        currentBuild.result = 'SUCCESS'
+      } catch (Exception err) {
+        currentBuild.result = 'FAILURE'
+      }
+     }
+   }
+
+   stage('Clean Up') {
+     cleanUp()
+   }
+}

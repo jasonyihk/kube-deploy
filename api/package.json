@@ -1,0 +1,27 @@
+{
+    "name": "api",
+    "description": "Sample RESTFul API service",
+    "version": "1.0.0-SNAPSHOT",
+    "prefix": "api",
+    "author": "jason.yi",
+    "private": true,
+    "repository": {
+      "type": "git",
+      "url": "https://github.com/jasonyihk/kube-project.git"
+    },
+    "engines": {
+      "node": "4.8.3"
+    },
+    "pre-commit": [
+      "jshint",
+      "jscs"
+    ],
+    "scripts": {
+      "start": "node /src/server.sj",
+      "test": "mocha --reporter spec test"
+    },
+    "dependencies": {
+        "express": "^4.13.3"
+    }
+  }
+  
